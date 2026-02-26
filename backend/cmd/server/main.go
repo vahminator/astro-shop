@@ -8,6 +8,7 @@ import (
 	"github.com/sellflow/backend/internal/handlers"
 	"github.com/sellflow/backend/internal/middleware"
 	"github.com/sellflow/backend/internal/models"
+	"github.com/sellflow/backend/internal/services"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
@@ -52,6 +53,12 @@ func main() {
 
 	log.Println("Database migrated successfully")
 
+	// Initialize crypto service
+	crypto, err := services.NewCryptoService(cfg.EncryptionKey)
+	if err != nil {
+		log.Fatal("Failed to initialize crypto service:", err)
+	}
+
 	// Setup router
 	r := gin.Default()
 	r.Use(middleware.CORSMiddleware())
@@ -74,6 +81,17 @@ func main() {
 	protected.Use(middleware.AuthMiddleware(cfg.JWTSecret))
 	{
 		protected.GET("/auth/me", authHandler.Me)
+
+		// Marketplace routes
+		marketplaceHandler := handlers.NewMarketplaceHandler(db, cfg, crypto)
+		marketplaces := protected.Group("/marketplaces")
+		{
+			marketplaces.GET("", marketplaceHandler.List)
+			marketplaces.POST("", marketplaceHandler.Connect)
+			marketplaces.PUT("/:id", marketplaceHandler.Update)
+			marketplaces.DELETE("/:id", marketplaceHandler.Delete)
+			marketplaces.POST("/:id/test", marketplaceHandler.TestConnection)
+		}
 	}
 
 	// Start server
