@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import { Product, ProductService } from '../../core/services/product.service';
+import { MarketplaceService, MarketplaceConnection } from '../../core/services/marketplace.service';
 
 @Component({
   selector: 'app-product-edit',
@@ -175,6 +176,14 @@ import { Product, ProductService } from '../../core/services/product.service';
                       @if (md.marketplace_url) {
                         <a [href]="md.marketplace_url" target="_blank" class="mp-link">View on Marketplace →</a>
                       }
+                      <div class="mp-actions">
+                        <button type="button" class="btn-mp-action" (click)="publishToMarketplace(md.marketplace)" [disabled]="publishing()">
+                          {{ publishing() ? 'Publishing...' : 'Push Updates' }}
+                        </button>
+                        <button type="button" class="btn-mp-action secondary" (click)="syncFromMarketplace(md.marketplace)" [disabled]="syncing()">
+                          {{ syncing() ? 'Syncing...' : 'Sync' }}
+                        </button>
+                      </div>
                     </div>
                   }
                 </div>
@@ -365,8 +374,24 @@ import { Product, ProductService } from '../../core/services/product.service';
     .mp-value { color: var(--text-secondary); font-family: monospace; }
     .mp-link {
       font-size: 13px; color: var(--accent-blue); text-decoration: none;
+      display: block;
     }
     .mp-link:hover { text-decoration: underline; }
+    .mp-actions {
+      display: flex; gap: 8px; margin-top: 10px;
+    }
+    .btn-mp-action {
+      flex: 1; padding: 6px 10px; border-radius: 6px;
+      font-size: 12px; font-weight: 500; cursor: pointer;
+      background: var(--accent-blue); color: white; border: none;
+    }
+    .btn-mp-action:hover { opacity: 0.9; }
+    .btn-mp-action:disabled { opacity: 0.5; cursor: not-allowed; }
+    .btn-mp-action.secondary {
+      background: transparent; border: 1px solid var(--border);
+      color: var(--text-secondary);
+    }
+    .btn-mp-action.secondary:hover { background: var(--bg-surface-light); }
 
     /* Danger zone */
     .danger-zone { border-color: rgba(239,68,68,0.3); }
@@ -406,12 +431,16 @@ export class ProductEditComponent implements OnInit {
   private route = inject(ActivatedRoute);
   private router = inject(Router);
   private productService = inject(ProductService);
+  private marketplaceService = inject(MarketplaceService);
 
   isNew = true;
   productId = '';
   loading = signal(false);
   saving = signal(false);
+  publishing = signal(false);
+  syncing = signal(false);
   uploadingImage = signal(false);
+  connections = signal<MarketplaceConnection[]>([]);
   images = signal<{ id: string; url: string; position: number }[]>([]);
   marketplaceData = signal<{ marketplace: string; external_id: string; status: string; marketplace_url: string }[]>([]);
 
@@ -434,6 +463,9 @@ export class ProductEditComponent implements OnInit {
       this.productId = id;
       this.loadProduct();
     }
+    this.marketplaceService.list().subscribe({
+      next: (conns) => this.connections.set(conns),
+    });
   }
 
   loadProduct() {
@@ -541,6 +573,33 @@ export class ProductEditComponent implements OnInit {
     if (!confirm('Are you sure you want to delete this product? This action cannot be undone.')) return;
     this.productService.delete(this.productId).subscribe({
       next: () => this.router.navigate(['/products']),
+    });
+  }
+
+  publishToMarketplace(marketplace: string) {
+    const conn = this.connections().find(c => c.marketplace === marketplace);
+    if (!conn) return;
+    this.publishing.set(true);
+    this.productService.publish(this.productId, conn.id).subscribe({
+      next: () => {
+        this.publishing.set(false);
+        // Reload to get updated status
+        setTimeout(() => this.loadProduct(), 2000);
+      },
+      error: () => this.publishing.set(false),
+    });
+  }
+
+  syncFromMarketplace(marketplace: string) {
+    const conn = this.connections().find(c => c.marketplace === marketplace);
+    if (!conn) return;
+    this.syncing.set(true);
+    this.productService.sync(this.productId, conn.id).subscribe({
+      next: () => {
+        this.syncing.set(false);
+        this.loadProduct();
+      },
+      error: () => this.syncing.set(false),
     });
   }
 

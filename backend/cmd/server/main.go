@@ -66,6 +66,7 @@ func main() {
 	}
 
 	importer := services.NewImportService(db, storage)
+	publisher := services.NewPublishService(db)
 
 	// Setup router
 	r := gin.Default()
@@ -113,6 +114,13 @@ func main() {
 			products.POST("/:id/images", productHandler.UploadImage)
 			products.DELETE("/:id/images/:imageId", productHandler.DeleteImage)
 		}
+
+		// Publish & Sync routes
+		publishHandler := handlers.NewPublishHandler(db, cfg, crypto, publisher)
+		products.POST("/:id/publish", publishHandler.Publish)
+		products.POST("/:id/sync", publishHandler.SyncProduct)
+		products.GET("/:id/queue", publishHandler.GetProductQueue)
+		protected.GET("/sync/logs", publishHandler.GetSyncLogs)
 
 		// Import routes
 		importHandler := handlers.NewImportHandler(db, cfg, crypto, importer)

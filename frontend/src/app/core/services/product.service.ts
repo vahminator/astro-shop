@@ -109,4 +109,16 @@ export class ProductService {
   deleteImage(productId: string, imageId: string): Observable<void> {
     return this.api.delete<void>(`/products/${productId}/images/${imageId}`);
   }
+
+  publish(productId: string, marketplaceId: string): Observable<{ message: string; queue_id: string; status: string }> {
+    return this.api.post(`/products/${productId}/publish`, { marketplace_id: marketplaceId });
+  }
+
+  sync(productId: string, marketplaceId: string): Observable<{ message: string }> {
+    return this.api.post(`/products/${productId}/sync`, { marketplace_id: marketplaceId });
+  }
+
+  getQueue(productId: string): Observable<any[]> {
+    return this.api.get<any[]>(`/products/${productId}/queue`);
+  }
 }
