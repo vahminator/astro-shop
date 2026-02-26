@@ -93,6 +93,10 @@ func main() {
 	{
 		protected.GET("/auth/me", authHandler.Me)
 
+		// Dashboard route
+		dashboardHandler := handlers.NewDashboardHandler(db)
+		protected.GET("/dashboard", dashboardHandler.Overview)
+
 		// Marketplace routes
 		marketplaceHandler := handlers.NewMarketplaceHandler(db, cfg, crypto)
 		marketplaces := protected.Group("/marketplaces")
