@@ -102,8 +102,17 @@ func main() {
 		}
 
 		// Product routes
-		productHandler := handlers.NewProductHandler(db)
-		protected.GET("/products", productHandler.List)
+		productHandler := handlers.NewProductHandler(db, storage)
+		products := protected.Group("/products")
+		{
+			products.GET("", productHandler.List)
+			products.GET("/:id", productHandler.Get)
+			products.POST("", productHandler.Create)
+			products.PUT("/:id", productHandler.Update)
+			products.DELETE("/:id", productHandler.Delete)
+			products.POST("/:id/images", productHandler.UploadImage)
+			products.DELETE("/:id/images/:imageId", productHandler.DeleteImage)
+		}
 
 		// Import routes
 		importHandler := handlers.NewImportHandler(db, cfg, crypto, importer)

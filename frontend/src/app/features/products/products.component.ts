@@ -1,30 +1,10 @@
 import { Component, inject, OnInit, OnDestroy, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { ApiService } from '../../core/services/api.service';
+import { Router } from '@angular/router';
 import { ImportService } from '../../core/services/import.service';
 import { MarketplaceService } from '../../core/services/marketplace.service';
-
-interface Product {
-  id: string;
-  title: string;
-  description: string;
-  sku: string;
-  base_price: number;
-  sale_price: number;
-  stock: number;
-  status: string;
-  images: { id: string; url: string; position: number }[];
-  marketplace_data: { marketplace: string; external_id: string; status: string; marketplace_url: string }[];
-  created_at: string;
-}
-
-interface ProductsResponse {
-  products: Product[];
-  total: number;
-  page: number;
-  limit: number;
-}
+import { ProductService, Product, ProductsResponse } from '../../core/services/product.service';
 
 @Component({
   selector: 'app-products',
@@ -44,11 +24,17 @@ interface ProductsResponse {
             </svg>
             <input type="text" placeholder="Search products..." [(ngModel)]="searchQuery" (input)="onSearch()">
           </div>
-          <button class="btn-primary" (click)="showImportDialog.set(true)">
+          <button class="btn-secondary" (click)="showImportDialog.set(true)">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
             </svg>
-            Import from Marketplace
+            Import
+          </button>
+          <button class="btn-primary" (click)="addProduct()">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+            </svg>
+            Add Product
           </button>
         </div>
       </div>
@@ -156,7 +142,7 @@ interface ProductsResponse {
             </thead>
             <tbody>
               @for (product of products(); track product.id) {
-                <tr>
+                <tr class="clickable-row" (click)="editProduct(product.id)">
                   <td class="img-cell">
                     @if (product.images && product.images.length > 0) {
                       <img [src]="product.images[0].url" [alt]="product.title" class="product-thumb">
@@ -342,6 +328,7 @@ interface ProductsResponse {
       font-size: 14px; vertical-align: middle;
     }
     .products-table tr:hover { background: var(--bg-surface-light); }
+    .clickable-row { cursor: pointer; }
 
     .img-cell { width: 60px; }
     .product-thumb {
@@ -388,7 +375,8 @@ interface ProductsResponse {
   `]
 })
 export class ProductsComponent implements OnInit, OnDestroy {
-  private api = inject(ApiService);
+  private productService = inject(ProductService);
+  private router = inject(Router);
   importService = inject(ImportService);
   private marketplaceService = inject(MarketplaceService);
 
@@ -423,12 +411,11 @@ export class ProductsComponent implements OnInit, OnDestroy {
 
   loadProducts() {
     this.loading.set(true);
-    const params = new URLSearchParams();
-    params.set('page', this.currentPage().toString());
-    params.set('limit', this.pageSize.toString());
-    if (this.searchQuery) params.set('search', this.searchQuery);
-
-    this.api.get<ProductsResponse>(`/products?${params.toString()}`).subscribe({
+    this.productService.list({
+      page: this.currentPage(),
+      limit: this.pageSize,
+      search: this.searchQuery || undefined,
+    }).subscribe({
       next: (res) => {
         this.products.set(res.products || []);
         this.totalProducts.set(res.total);
@@ -484,6 +471,14 @@ export class ProductsComponent implements OnInit, OnDestroy {
         this.importLoading.set(false);
       }
     });
+  }
+
+  addProduct() {
+    this.router.navigate(['/products', 'new']);
+  }
+
+  editProduct(id: string) {
+    this.router.navigate(['/products', id]);
   }
 
   dismissImportBanner() {

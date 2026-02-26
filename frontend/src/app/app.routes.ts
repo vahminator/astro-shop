@@ -19,6 +19,7 @@ export const routes: Routes = [
     children: [
       { path: 'dashboard', loadComponent: () => import('./features/dashboard/dashboard.component').then(m => m.DashboardComponent) },
       { path: 'products', loadComponent: () => import('./features/products/products.component').then(m => m.ProductsComponent) },
+      { path: 'products/:id', loadComponent: () => import('./features/products/product-edit.component').then(m => m.ProductEditComponent) },
       { path: 'inbox', loadComponent: () => import('./features/inbox/inbox.component').then(m => m.InboxComponent) },
       { path: 'reviews', loadComponent: () => import('./features/reviews/reviews.component').then(m => m.ReviewsComponent) },
       { path: 'settings', loadComponent: () => import('./features/settings/settings.component').then(m => m.SettingsComponent) },

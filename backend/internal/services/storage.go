@@ -3,6 +3,7 @@ package services
 import (
 	"context"
 	"fmt"
+	"io"
 	"net/http"
 	"strings"
 
@@ -64,6 +65,29 @@ func (s *StorageService) UploadFromURL(ctx context.Context, imageURL string) (st
 	key := fmt.Sprintf("products/%s%s", uuid.New().String(), ext)
 
 	_, err = s.client.PutObject(ctx, s.bucket, key, resp.Body, resp.ContentLength, minio.PutObjectOptions{
+		ContentType: contentType,
+	})
+	if err != nil {
+		return "", "", fmt.Errorf("failed to upload to storage: %w", err)
+	}
+
+	objectURL = fmt.Sprintf("http://%s/%s/%s", s.client.EndpointURL().Host, s.bucket, key)
+	return key, objectURL, nil
+}
+
+func (s *StorageService) Upload(ctx context.Context, reader io.Reader, size int64, contentType string) (storageKey string, objectURL string, err error) {
+	ext := ".jpg"
+	if strings.Contains(contentType, "png") {
+		ext = ".png"
+	} else if strings.Contains(contentType, "webp") {
+		ext = ".webp"
+	} else if strings.Contains(contentType, "gif") {
+		ext = ".gif"
+	}
+
+	key := fmt.Sprintf("products/%s%s", uuid.New().String(), ext)
+
+	_, err = s.client.PutObject(ctx, s.bucket, key, reader, size, minio.PutObjectOptions{
 		ContentType: contentType,
 	})
 	if err != nil {
