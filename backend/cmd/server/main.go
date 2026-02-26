@@ -53,11 +53,19 @@ func main() {
 
 	log.Println("Database migrated successfully")
 
-	// Initialize crypto service
+	// Initialize services
 	crypto, err := services.NewCryptoService(cfg.EncryptionKey)
 	if err != nil {
 		log.Fatal("Failed to initialize crypto service:", err)
 	}
+
+	storage, err := services.NewStorageService(cfg)
+	if err != nil {
+		log.Printf("Warning: MinIO not available: %v", err)
+		storage = nil
+	}
+
+	importer := services.NewImportService(db, storage)
 
 	// Setup router
 	r := gin.Default()
@@ -91,6 +99,18 @@ func main() {
 			marketplaces.PUT("/:id", marketplaceHandler.Update)
 			marketplaces.DELETE("/:id", marketplaceHandler.Delete)
 			marketplaces.POST("/:id/test", marketplaceHandler.TestConnection)
+		}
+
+		// Product routes
+		productHandler := handlers.NewProductHandler(db)
+		protected.GET("/products", productHandler.List)
+
+		// Import routes
+		importHandler := handlers.NewImportHandler(db, cfg, crypto, importer)
+		imports := protected.Group("/import")
+		{
+			imports.POST("/start", importHandler.Start)
+			imports.GET("/status", importHandler.Status)
 		}
 	}
 
