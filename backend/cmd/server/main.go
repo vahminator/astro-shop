@@ -67,6 +67,7 @@ func main() {
 
 	importer := services.NewImportService(db, storage)
 	publisher := services.NewPublishService(db)
+	inboxSvc := services.NewInboxService(db)
 
 	// Setup router
 	r := gin.Default()
@@ -121,6 +122,23 @@ func main() {
 		products.POST("/:id/sync", publishHandler.SyncProduct)
 		products.GET("/:id/queue", publishHandler.GetProductQueue)
 		protected.GET("/sync/logs", publishHandler.GetSyncLogs)
+
+		// Inbox routes
+		inboxHandler := handlers.NewInboxHandler(db, cfg, crypto, inboxSvc)
+		inbox := protected.Group("/inbox")
+		{
+			inbox.GET("", inboxHandler.ListConversations)
+			inbox.POST("/sync", inboxHandler.SyncInbox)
+			inbox.GET("/:id", inboxHandler.GetConversation)
+			inbox.POST("/:id/messages", inboxHandler.SendMessage)
+			inbox.PUT("/:id/status", inboxHandler.UpdateStatus)
+		}
+		templates := protected.Group("/templates")
+		{
+			templates.GET("", inboxHandler.ListTemplates)
+			templates.POST("", inboxHandler.CreateTemplate)
+			templates.DELETE("/:id", inboxHandler.DeleteTemplate)
+		}
 
 		// Import routes
 		importHandler := handlers.NewImportHandler(db, cfg, crypto, importer)
