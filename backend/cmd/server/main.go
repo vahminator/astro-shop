@@ -68,6 +68,7 @@ func main() {
 	importer := services.NewImportService(db, storage)
 	publisher := services.NewPublishService(db)
 	inboxSvc := services.NewInboxService(db)
+	reviewSvc := services.NewReviewService(db)
 
 	// Setup router
 	r := gin.Default()
@@ -138,6 +139,20 @@ func main() {
 			templates.GET("", inboxHandler.ListTemplates)
 			templates.POST("", inboxHandler.CreateTemplate)
 			templates.DELETE("/:id", inboxHandler.DeleteTemplate)
+		}
+
+		// Review routes
+		reviewHandler := handlers.NewReviewHandler(db, cfg, crypto, reviewSvc)
+		reviews := protected.Group("/reviews")
+		{
+			reviews.GET("", reviewHandler.List)
+			reviews.GET("/stats", reviewHandler.Stats)
+			reviews.POST("", reviewHandler.Create)
+			reviews.POST("/sync", reviewHandler.SyncReviews)
+			reviews.GET("/:id", reviewHandler.Get)
+			reviews.POST("/:id/reply", reviewHandler.Reply)
+			reviews.PUT("/:id/status", reviewHandler.UpdateStatus)
+			reviews.DELETE("/:id", reviewHandler.Delete)
 		}
 
 		// Import routes
